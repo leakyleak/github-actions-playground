@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Layered 3D Manhattan Twilight Backdrop</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23122334'/><path d='M16 4l2 8h2v16h-8V12h2z' fill='%23ffbd7a'/></svg>" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="glCanvas"></canvas>
+
+    <!-- Loading Overlay -->
+    <div id="loader">
+      <div class="loader-card">
+        <div class="spinner"></div>
+        <div class="loader-text">Loading Poly Haven HDRI &amp; PBR Assets…</div>
+      </div>
+    </div>
+
+    <!-- Top-Left Stats & Hint -->
+    <div class="hud-top-left">
+      <span id="statsBadge" class="hud-pill mono">Initializing…</span>
+      <span id="hintBadge" class="hud-pill">Move cursor for rooftop parallax</span>
+    </div>
+
+    <!-- Top-Right Camera Modes -->
+    <div class="hud-top-right">
+      <button id="btnWindow" class="hud-btn active" title="Rooftop window view with real-distance parallax">Window</button>
+      <button id="btnSlice" class="hud-btn" title="Orbit outside to inspect the 5 separated depth layers">Depth Slice</button>
+      <button id="btnSway" class="hud-btn active" title="Toggle gentle automatic parallax sway">Sway</button>
+    </div>
+
+    <!-- Bottom Controls Dock -->
+    <div class="hud-bottom">
+      <div class="layer-bar">
+        <button data-layer="sky" class="layer-btn hud-btn active">1 Sky Dome</button>
+        <button data-layer="skyline" class="layer-btn hud-btn active">2 Far Skyline</button>
+        <button data-layer="mid" class="layer-btn hud-btn active">3 Mid City</button>
+        <button data-layer="street" class="layer-btn hud-btn active">4 Street Canyon</button>
+        <button data-layer="frame" class="layer-btn hud-btn active">5 Foreground Frame</button>
+        <span id="sliceHint" class="hud-pill hidden">Drag to orbit · Scroll to zoom</span>
+      </div>
+
+      <div class="controls-panel">
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Time of Day</span><span id="valTod" class="mono">Twilight</span></div>
+          <input id="slTod" type="range" min="0" max="100" value="36" />
+        </label>
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Horizon Fog</span><span id="valFog" class="mono">100%</span></div>
+          <input id="slFog" type="range" min="0" max="200" value="100" />
+        </label>
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Lit Windows</span><span id="valLit" class="mono">32%</span></div>
+          <input id="slLit" type="range" min="5" max="85" value="32" />
+        </label>
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Light Bloom</span><span id="valBloom" class="mono">100%</span></div>
+          <input id="slBloom" type="range" min="0" max="200" value="100" />
+        </label>
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Traffic</span><span id="valTraffic" class="mono">1.0×</span></div>
+          <input id="slTraffic" type="range" min="0" max="250" value="100" />
+        </label>
+        <label class="ctrl">
+          <div class="ctrl-head"><span>Exposure</span><span id="valExp" class="mono">1.08</span></div>
+          <input id="slExp" type="range" min="60" max="170" value="108" />
+        </label>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
