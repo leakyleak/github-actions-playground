@@ -527,11 +527,13 @@ export class PhotoPlusRig {
     this.vehicles = [];
     this.bridgeVehicles = [];
     this.birds = [];
+    this.boats = [];
     this.plane = { x: 0.12, y: 0.11, vx: 0.018 };
 
     this._buildWindows();
     this._buildTraffic();
     this._buildSkyLife();
+    this._buildBoats();
   }
 
   async load() {
@@ -708,6 +710,44 @@ export class PhotoPlusRig {
     }
     this.plane.x += this.plane.vx * dt;
     if (this.plane.x > 1.08) this.plane.x = -0.08;
+
+    // Advance East River boats
+    for (const boat of this.boats) {
+      boat.x += boat.dir * boat.speed * Math.max(0.25, trafficSpeed) * dt;
+      if (boat.dir > 0 && boat.x > 0.66) boat.x = -0.06;
+      if (boat.dir < 0 && boat.x < -0.06) boat.x = 0.66;
+    }
+  }
+
+  _buildBoats() {
+    this.boats = [];
+    if (this.data.id !== 'bridge_photo') return;
+    // 1. NYC Ferry gliding right-to-left in the foreground East River channel (in front of bridge pier)
+    this.boats.push({
+      type: 'ferry',
+      x: 0.44,
+      y: 0.745,
+      dir: -1,
+      speed: 0.016,
+      scale: 0.92,
+      hullColor: '#1b2c3f',
+      cabinColor: '#eceff4',
+      stripeColor: '#2a7fb8',
+      phase: 0.4
+    });
+    // 2. Harbor Tugboat cruising left-to-right in mid-channel (passes behind Brooklyn Bridge pier!)
+    this.boats.push({
+      type: 'tug',
+      x: 0.08,
+      y: 0.605,
+      dir: 1,
+      speed: 0.011,
+      scale: 0.52,
+      hullColor: '#7a231d',
+      cabinColor: '#f2eadc',
+      stripeColor: '#e5a922',
+      phase: 2.1
+    });
   }
 
   // Render the complete deconstructed Photo+ scene to a 2D canvas with parallax & debug overlays
@@ -797,7 +837,7 @@ export class PhotoPlusRig {
       ctx.restore();
     }
 
-    // 2. EAST RIVER SHIMMER & DYNAMIC SKYLINE WATER REFLECTIONS (Bridge Scene)
+    // 2. EAST RIVER FLOWING WATER RIPPLES, SKYLINE REFLECTIONS & MOVING BOATS (Bridge Scene)
     if (photoLayers.water && this.data.waterPolygon) {
       ctx.save();
       ctx.beginPath();
@@ -809,24 +849,145 @@ export class PhotoPlusRig {
       ctx.closePath();
       ctx.clip();
 
+      // 2a. Flowing tidal wave crests & golden sunset/skyline specular glints
       ctx.globalCompositeOperation = 'screen';
-      const shimmerIntensity = (0.28 + 0.55 * nightFactor) * exposure;
-      // Draw animated horizontal water wave reflection streaks under the skyline and bridge tower
-      const numWaves = 68;
+      const shimmerIntensity = (0.34 + 0.58 * nightFactor) * exposure;
+      const numWaves = 110;
       for (let i = 0; i < numWaves; i++) {
-        const wy = 0.56 + (i / numWaves) * 0.42;
-        const wavePhase = time * 2.2 + i * 0.75;
-        const wxCenter = 0.28 + 0.26 * ((i * 0.618) % 1) + Math.sin(wavePhase) * 0.008;
-        const [sx, sy] = toScreen(wxCenter, wy);
-        const streakW = (18 + (wy - 0.55) * 95) * (0.7 + 0.3 * Math.sin(wavePhase * 1.3));
-        const streakH = 1.4 + (wy - 0.55) * 3.5;
+        const depthF = i / numWaves;
+        const wy = 0.54 + depthF * 0.44;
+        const drift = (time * (0.012 + depthF * 0.018) * (i % 2 === 0 ? 1 : -0.6)) % 0.65;
+        const baseX = (0.04 + ((i * 0.6180339) % 1) * 0.58 + drift + 0.65) % 0.65;
+        const wavePhase = time * (1.8 + depthF * 1.4) + i * 0.85;
+        const [sx, sy] = toScreen(baseX, wy);
 
-        const isGold = i % 3 !== 0;
-        const alpha = (0.04 + 0.07 * Math.sin(wavePhase) ** 2) * shimmerIntensity;
-        ctx.fillStyle = isGold
-          ? `rgba(255, 196, 112, ${alpha.toFixed(3)})`
-          : `rgba(150, 215, 255, ${(alpha * 0.8).toFixed(3)})`;
-        ctx.fillRect(sx - streakW * 0.5, sy, streakW, streakH);
+        const streakW = (14 + depthF * 88) * (0.65 + 0.35 * Math.sin(wavePhase));
+        const streakH = 1.2 + depthF * 3.2;
+
+        // Golden sun-path glints near center-left, cool blue-white glints elsewhere
+        const inSunPath = Math.exp(-Math.pow((baseX - 0.25) / 0.16, 2));
+        const alpha = (0.035 + 0.075 * Math.sin(wavePhase) ** 2) * shimmerIntensity * (0.65 + 0.75 * inSunPath);
+        ctx.fillStyle =
+          inSunPath > 0.35 || i % 3 !== 0
+            ? `rgba(255, 204, 128, ${alpha.toFixed(3)})`
+            : `rgba(155, 215, 255, ${(alpha * 0.82).toFixed(3)})`;
+        ctx.fillRect(sx - streakW * 0.5, sy + Math.sin(wavePhase * 0.7) * 1.5, streakW, streakH);
+      }
+
+      // 2b. Animated East River Boats (NYC Ferry & Harbor Tugboat)
+      ctx.globalCompositeOperation = 'source-over';
+      const scaleFactor = drawW / 1376;
+      for (const boat of this.boats) {
+        const [bx, by] = toScreen(boat.x, boat.y);
+        const bobY = Math.sin(time * 2.4 + boat.phase) * 1.8 * boat.scale * scaleFactor;
+        const pitch = Math.sin(time * 1.9 + boat.phase) * 0.025;
+        const s = boat.scale * scaleFactor;
+        const dir = boat.dir; // +1 = moving right, -1 = moving left
+
+        // If boat is behind the Brooklyn Bridge stone tower (y < 0.672), skip drawing inside tower X bounds
+        const behindPier = boat.y < 0.672 && boat.x > 0.135 && boat.x < 0.232;
+        if (behindPier) continue;
+
+        ctx.save();
+        ctx.translate(bx, by + bobY);
+
+        // V-shaped foaming wake trailing behind stern
+        const wakeLen = (boat.type === 'ferry' ? 115 : 78) * s;
+        const wakeSpread = (boat.type === 'ferry' ? 16 : 11) * s;
+        const sternX = -dir * (boat.type === 'ferry' ? 28 : 16) * s;
+
+        const wGrad = ctx.createLinearGradient(sternX, 0, sternX - dir * wakeLen, 0);
+        wGrad.addColorStop(0, 'rgba(235, 245, 255, 0.42)');
+        wGrad.addColorStop(0.5, 'rgba(205, 225, 245, 0.18)');
+        wGrad.addColorStop(1, 'rgba(205, 225, 245, 0)');
+        ctx.strokeStyle = wGrad;
+        ctx.lineWidth = Math.max(1.2, 2.2 * s);
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(sternX, 1.5 * s);
+          ctx.lineTo(sternX - dir * wakeLen, side * wakeSpread + Math.sin(time * 4 + side) * 1.5 * s);
+          ctx.stroke();
+        }
+
+        // Boat reflection on water surface
+        ctx.fillStyle = 'rgba(15, 22, 32, 0.32)';
+        ctx.beginPath();
+        ctx.ellipse(0, 6 * s, (boat.type === 'ferry' ? 32 : 18) * s, 4.5 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.scale(dir, 1);
+        ctx.rotate(pitch);
+
+        if (boat.type === 'ferry') {
+          // Iconic NYC Ferry (sleek catamaran hull + 2-deck white passenger cabin + blue stripe)
+          // Hull
+          ctx.fillStyle = boat.hullColor;
+          ctx.beginPath();
+          ctx.moveTo(-30 * s, 2 * s);
+          ctx.lineTo(34 * s, 2 * s);
+          ctx.lineTo(28 * s, -5 * s);
+          ctx.lineTo(-28 * s, -5 * s);
+          ctx.closePath();
+          ctx.fill();
+
+          // Blue waterline stripe
+          ctx.fillStyle = boat.stripeColor;
+          ctx.fillRect(-28 * s, -3 * s, 58 * s, 2.2 * s);
+
+          // Main white passenger cabin
+          ctx.fillStyle = boat.cabinColor;
+          ctx.fillRect(-23 * s, -13 * s, 44 * s, 8 * s);
+          // Upper deck & wheelhouse
+          ctx.fillRect(-16 * s, -19 * s, 31 * s, 6 * s);
+
+          // Warm lit cabin windows
+          ctx.fillStyle = nightFactor > 0.25 ? '#ffe399' : '#263849';
+          for (let wx = -20; wx <= 14; wx += 5.5) {
+            ctx.fillRect(wx * s, -11 * s, 3.8 * s, 3.2 * s);
+          }
+          for (let wx = -13; wx <= 8; wx += 5.5) {
+            ctx.fillRect(wx * s, -17 * s, 3.8 * s, 2.8 * s);
+          }
+
+          // Navigation lights (bow green/amber + masthead white)
+          ctx.fillStyle = '#fff5cc';
+          ctx.beginPath();
+          ctx.arc(31 * s, -4 * s, Math.max(1.5, 2.2 * s), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#38ff7a';
+          ctx.beginPath();
+          ctx.arc(10 * s, -20.5 * s, Math.max(1.4, 1.8 * s), 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Harbor Tugboat (red hull + cream wheelhouse + smokestack)
+          ctx.fillStyle = boat.hullColor;
+          ctx.beginPath();
+          ctx.moveTo(-17 * s, 2 * s);
+          ctx.lineTo(19 * s, 2 * s);
+          ctx.lineTo(15 * s, -5 * s);
+          ctx.lineTo(-15 * s, -5 * s);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = boat.cabinColor;
+          ctx.fillRect(-9 * s, -13 * s, 17 * s, 8 * s);
+          ctx.fillRect(-5 * s, -18 * s, 9 * s, 5 * s);
+          // Smokestack
+          ctx.fillStyle = '#242930';
+          ctx.fillRect(-9 * s, -20 * s, 3.2 * s, 7 * s);
+          ctx.fillStyle = boat.stripeColor;
+          ctx.fillRect(-9 * s, -18.5 * s, 3.2 * s, 1.8 * s);
+
+          // Warm wheelhouse window + red port nav light
+          ctx.fillStyle = '#ffd978';
+          ctx.fillRect(-3 * s, -16.5 * s, 5 * s, 2.5 * s);
+          ctx.fillStyle = '#ff3b2f';
+          ctx.beginPath();
+          ctx.arc(0, -19.5 * s, Math.max(1.3, 1.8 * s), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
       }
       ctx.restore();
     }
