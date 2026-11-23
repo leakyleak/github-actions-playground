@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 5173"
   },
   "dependencies": {
+    "esbuild": "^0.28.2",
     "postprocessing": "^6.36.4",
     "three": "^0.170.0"
   },

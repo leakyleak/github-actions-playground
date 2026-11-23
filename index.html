@@ -3,65 +3,145 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Layered 3D Manhattan Twilight Backdrop</title>
+  <title>NYC Scenery &amp; Photo+ Backdrop Studio — Brooklyn Bridge &amp; Manhattan 3D</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23122334'/><path d='M16 4l2 8h2v16h-8V12h2z' fill='%23ffbd7a'/></svg>" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="app">
+    <!-- 3D WebGL Canvas (PBR 3D Scenes) -->
     <canvas id="glCanvas"></canvas>
+
+    <!-- 2D Photo+ Deconstructed Rig Canvas (Brooklyn Bridge & Midtown Photo+ Scenes) -->
+    <canvas id="photoCanvas"></canvas>
+
+    <!-- Optional Music Room Architectural Window Casement Overlay (matches image.png & image_2.png) -->
+    <div id="roomFrameOverlay" class="room-frame hidden">
+      <div class="room-wall-top">
+        <div class="curtain-rod">
+          <div class="rod-finial left"></div>
+          <div class="rod-bracket center"></div>
+          <div class="rod-finial right"></div>
+        </div>
+      </div>
+      <div class="room-wall-middle">
+        <div class="room-wall-left">
+          <div class="room-curtain"></div>
+        </div>
+        <div class="window-casing">
+          <div class="window-pane-grid">
+            <div class="mullion-h">
+              <div class="window-latch"></div>
+            </div>
+            <div class="mullion-v"></div>
+          </div>
+          <div class="window-sill"></div>
+        </div>
+        <div class="room-wall-right">
+          <div class="wall-poster">
+            <span>CREATE</span>
+            <span>INSPIRE</span>
+            <span>REPEAT</span>
+          </div>
+        </div>
+      </div>
+      <div class="room-wall-bottom"></div>
+    </div>
 
     <!-- Loading Overlay -->
     <div id="loader">
       <div class="loader-card">
         <div class="spinner"></div>
-        <div class="loader-text">Loading Poly Haven HDRI &amp; PBR Assets…</div>
+        <div class="loader-text">Loading NYC Photo+ Rig &amp; Poly Haven 3D PBR Assets…</div>
       </div>
     </div>
 
-    <!-- Top-Left Stats & Hint -->
+    <!-- Top-Left Stats & Active Scenery Badge -->
     <div class="hud-top-left">
+      <span class="brand-pill"><strong>Music Room</strong> · NYC Scenery &amp; Photo+ Backdrop</span>
       <span id="statsBadge" class="hud-pill mono">Initializing…</span>
-      <span id="hintBadge" class="hud-pill">Move cursor for rooftop parallax</span>
+      <span id="hintBadge" class="hud-pill">Bridge Alive (Photo+ Deconstructed)</span>
     </div>
 
-    <!-- Top-Right Camera Modes -->
+    <!-- Top-Right Scenery Preset Selector & View Modes -->
     <div class="hud-top-right">
-      <button id="btnWindow" class="hud-btn active" title="Rooftop window view with real-distance parallax">Window</button>
-      <button id="btnSlice" class="hud-btn" title="Orbit outside to inspect the 5 separated depth layers">Depth Slice</button>
-      <button id="btnSway" class="hud-btn active" title="Toggle gentle automatic parallax sway">Sway</button>
+      <div class="preset-group" role="group" aria-label="Scenery Preset">
+        <button data-scenery="bridge_photo" class="scenery-btn hud-btn active" title="Deconstructed Brooklyn Bridge &amp; FDR Drive Photo+ Rig with perspective window masks &amp; spline traffic">
+          Bridge Alive (Photo+)
+        </button>
+        <button data-scenery="midtown_photo" class="scenery-btn hud-btn" title="Deconstructed Midtown Manhattan Avenue Photo+ Rig with skyscraper window grids &amp; avenue traffic">
+          Street Alive (Photo+)
+        </button>
+        <button data-scenery="bridge_3d" class="scenery-btn hud-btn" title="True 3D PBR Brooklyn Bridge, East River Water Shader, FDR Drive &amp; Financial District Skyline">
+          Bridge 3D (PBR)
+        </button>
+        <button data-scenery="canyon_3d" class="scenery-btn hud-btn" title="True 3D PBR Manhattan Street Canyon with 5 depth layers, fire escapes &amp; 3D traffic">
+          Street Canyon 3D (PBR)
+        </button>
+      </div>
+
+      <div class="mode-group">
+        <button id="btnRoomFrame" class="hud-btn" title="Preview inside the Music Room double-hung window casement">
+          Room Window
+        </button>
+        <button id="btnInspector" class="hud-btn" title="Show Photo+ perspective building facade quads, exclusion masks &amp; highway traffic splines (or 3D Depth Slice)">
+          Inspect Rig
+        </button>
+        <button id="btnSway" class="hud-btn active" title="Toggle gentle automatic parallax camera sway">
+          Sway
+        </button>
+        <button id="btnExportJson" class="hud-btn" title="Download calibrated Photo+ Rig JSON data (polygons, window grids &amp; highway splines) for your Music Room app">
+          Export Rig JSON
+        </button>
+      </div>
     </div>
 
     <!-- Bottom Controls Dock -->
     <div class="hud-bottom">
+      <!-- Dynamic Sub-Layer Toggle Bar (switches between Photo+ Deconstructed Layers and 3D Depth Layers) -->
       <div class="layer-bar">
-        <button data-layer="sky" class="layer-btn hud-btn active">1 Sky Dome</button>
-        <button data-layer="skyline" class="layer-btn hud-btn active">2 Far Skyline</button>
-        <button data-layer="mid" class="layer-btn hud-btn active">3 Mid City</button>
-        <button data-layer="street" class="layer-btn hud-btn active">4 Street Canyon</button>
-        <button data-layer="frame" class="layer-btn hud-btn active">5 Foreground Frame</button>
-        <span id="sliceHint" class="hud-pill hidden">Drag to orbit · Scroll to zoom</span>
+        <div id="photoLayerBar" class="subbar">
+          <span class="bar-label">Photo+ Layers:</span>
+          <button data-photolayer="base" class="photolayer-btn hud-btn active">1 Base Plate</button>
+          <button data-photolayer="water" class="photolayer-btn hud-btn active">2 River Shimmer</button>
+          <button data-photolayer="windows" class="photolayer-btn hud-btn active">3 Facade Windows</button>
+          <button data-photolayer="traffic" class="photolayer-btn hud-btn active">4 Spline Traffic</button>
+          <button data-photolayer="skyLife" class="photolayer-btn hud-btn active">5 Birds &amp; Plane</button>
+          <button data-photolayer="debug" id="btnDebugOverlay" class="photolayer-btn hud-btn">6 Mask &amp; Spline Overlay</button>
+        </div>
+
+        <div id="threeLayerBar" class="subbar hidden">
+          <span class="bar-label">3D Depth Layers:</span>
+          <button data-layer="sky" class="layer-btn hud-btn active">1 Sky Dome</button>
+          <button data-layer="skyline" class="layer-btn hud-btn active">2 Far Skyline</button>
+          <button data-layer="mid" class="layer-btn hud-btn active">3 Mid City / Bridge</button>
+          <button data-layer="street" class="layer-btn hud-btn active">4 Street / FDR Highway</button>
+          <button data-layer="frame" class="layer-btn hud-btn active">5 Foreground / River</button>
+          <button id="btnSlice" class="hud-btn" title="Orbit outside to inspect the separated 3D depth layers">3D Depth Slice Orbit</button>
+          <span id="sliceHint" class="hud-pill hidden">Drag to orbit · Scroll to zoom</span>
+        </div>
       </div>
 
+      <!-- Sliders Panel (Time of Day, Horizon Haze, Lit Windows, Light Bloom, Traffic Speed, Exposure) -->
       <div class="controls-panel">
         <label class="ctrl">
           <div class="ctrl-head"><span>Time of Day</span><span id="valTod" class="mono">Twilight</span></div>
           <input id="slTod" type="range" min="0" max="100" value="36" />
         </label>
         <label class="ctrl">
-          <div class="ctrl-head"><span>Horizon Fog</span><span id="valFog" class="mono">100%</span></div>
+          <div class="ctrl-head"><span>Horizon Haze</span><span id="valFog" class="mono">100%</span></div>
           <input id="slFog" type="range" min="0" max="200" value="100" />
         </label>
         <label class="ctrl">
-          <div class="ctrl-head"><span>Lit Windows</span><span id="valLit" class="mono">32%</span></div>
-          <input id="slLit" type="range" min="5" max="85" value="32" />
+          <div class="ctrl-head"><span>Lit Windows</span><span id="valLit" class="mono">42%</span></div>
+          <input id="slLit" type="range" min="5" max="90" value="42" />
         </label>
         <label class="ctrl">
           <div class="ctrl-head"><span>Light Bloom</span><span id="valBloom" class="mono">100%</span></div>
           <input id="slBloom" type="range" min="0" max="200" value="100" />
         </label>
         <label class="ctrl">
-          <div class="ctrl-head"><span>Traffic</span><span id="valTraffic" class="mono">1.0×</span></div>
+          <div class="ctrl-head"><span>Traffic Flow</span><span id="valTraffic" class="mono">1.0×</span></div>
           <input id="slTraffic" type="range" min="0" max="250" value="100" />
         </label>
         <label class="ctrl">
