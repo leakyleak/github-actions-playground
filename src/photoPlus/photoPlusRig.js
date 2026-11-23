@@ -849,29 +849,67 @@ export class PhotoPlusRig {
       ctx.closePath();
       ctx.clip();
 
-      // 2a. Flowing tidal wave crests & golden sunset/skyline specular glints
+      // 2a. Real Photo-Water Horizontal Wave Displacement (ripples the actual East River photo surface!)
+      const waterTopY = 0.52;
+      const waterBotY = 0.995;
+      const numSlices = 56;
+      const sliceNormH = (waterBotY - waterTopY) / numSlices;
+      for (let sIdx = 0; sIdx < numSlices; sIdx++) {
+        const depthF = sIdx / numSlices;
+        const ny = waterTopY + depthF * (waterBotY - waterTopY);
+        const sy = oy + ny * drawH;
+        const sh = Math.ceil(sliceNormH * drawH) + 1.5;
+
+        // Perspective-scaled sinusoidal wave displacement
+        const waveOffsetPx =
+          (Math.sin(depthF * 28.0 - time * 3.4) * 0.65 +
+           Math.cos(depthF * 47.0 + time * 2.3) * 0.35) *
+          (1.6 + depthF * 5.2) *
+          (drawW / 1376);
+
+        const srcY = ny * this.image.height;
+        const srcH = Math.max(1, sliceNormH * this.image.height);
+        ctx.drawImage(
+          this.image,
+          0, srcY, this.image.width, srcH,
+          ox + waveOffsetPx, sy, drawW, sh
+        );
+      }
+
+      // Re-apply subtle atmospheric tint inside water clip if nightFactor > 0.02
+      if (nightFactor > 0.02) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        const wTint = Math.round(lerp(245, 78, nightFactor));
+        const bTint = Math.round(lerp(240, 138, nightFactor));
+        ctx.fillStyle = `rgb(${wTint}, ${Math.round(lerp(240, 88, nightFactor))}, ${bTint})`;
+        ctx.fillRect(0, oy + waterTopY * drawH, width, drawH * 0.5);
+        ctx.restore();
+      }
+
+      // 2b. Flowing tidal wave crests & golden sunset/skyline specular glints
       ctx.globalCompositeOperation = 'screen';
-      const shimmerIntensity = (0.34 + 0.58 * nightFactor) * exposure;
-      const numWaves = 110;
+      const shimmerIntensity = (0.85 + 0.65 * nightFactor) * exposure;
+      const numWaves = 120;
       for (let i = 0; i < numWaves; i++) {
         const depthF = i / numWaves;
         const wy = 0.54 + depthF * 0.44;
-        const drift = (time * (0.012 + depthF * 0.018) * (i % 2 === 0 ? 1 : -0.6)) % 0.65;
-        const baseX = (0.04 + ((i * 0.6180339) % 1) * 0.58 + drift + 0.65) % 0.65;
-        const wavePhase = time * (1.8 + depthF * 1.4) + i * 0.85;
+        const drift = (time * (0.018 + depthF * 0.028) * (i % 2 === 0 ? 1 : -0.7)) % 0.65;
+        const baseX = (0.03 + ((i * 0.6180339) % 1) * 0.59 + drift + 0.65) % 0.65;
+        const wavePhase = time * (2.6 + depthF * 1.6) + i * 0.85;
         const [sx, sy] = toScreen(baseX, wy);
 
-        const streakW = (14 + depthF * 88) * (0.65 + 0.35 * Math.sin(wavePhase));
-        const streakH = 1.2 + depthF * 3.2;
+        const streakW = (18 + depthF * 96) * (0.65 + 0.35 * Math.sin(wavePhase));
+        const streakH = 1.6 + depthF * 3.4;
 
         // Golden sun-path glints near center-left, cool blue-white glints elsewhere
-        const inSunPath = Math.exp(-Math.pow((baseX - 0.25) / 0.16, 2));
-        const alpha = (0.035 + 0.075 * Math.sin(wavePhase) ** 2) * shimmerIntensity * (0.65 + 0.75 * inSunPath);
+        const inSunPath = Math.exp(-Math.pow((baseX - 0.25) / 0.18, 2));
+        const alpha = clamp((0.08 + 0.16 * Math.sin(wavePhase) ** 2) * shimmerIntensity * (0.7 + 0.8 * inSunPath), 0.04, 0.36);
         ctx.fillStyle =
           inSunPath > 0.35 || i % 3 !== 0
-            ? `rgba(255, 204, 128, ${alpha.toFixed(3)})`
-            : `rgba(155, 215, 255, ${(alpha * 0.82).toFixed(3)})`;
-        ctx.fillRect(sx - streakW * 0.5, sy + Math.sin(wavePhase * 0.7) * 1.5, streakW, streakH);
+            ? `rgba(255, 214, 145, ${alpha.toFixed(3)})`
+            : `rgba(175, 225, 255, ${(alpha * 0.88).toFixed(3)})`;
+        ctx.fillRect(sx - streakW * 0.5, sy + Math.sin(wavePhase * 0.8) * 2.0, streakW, streakH);
       }
 
       // 2b. Animated East River Boats (NYC Ferry & Harbor Tugboat)
