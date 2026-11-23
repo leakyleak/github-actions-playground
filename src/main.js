@@ -23,6 +23,7 @@ import { createStreetCanyonLayer, createTenementWindowMaterial } from './layers/
 import { createForegroundFrameLayer } from './layers/foregroundFrameLayer.js';
 import { createBrooklynBridge3DScene } from './layers/brooklynBridge3DLayer.js';
 import { PhotoPlusRig, BRIDGE_RIG_DATA, MIDTOWN_RIG_DATA } from './photoPlus/photoPlusRig.js';
+import { exportPortablePhotoHtml, exportSceneGlb } from './utils/exporters.js';
 
 function createDepthSliceGuides() {
   const group = new THREE.Group();
@@ -349,6 +350,30 @@ async function init() {
     a.download = 'nyc_photo_plus_deconstructed_rig.json';
     a.click();
     URL.revokeObjectURL(url);
+  });
+
+  // Bind Export Portable Single-File HTML Button (for sharing Photo+ Bridge Alive / Street Alive with Claude or offline)
+  const btnExportHtml = document.getElementById('btnExportHtml');
+  btnExportHtml.addEventListener('click', () => {
+    const activeRig = state.scenery === 'midtown_photo' ? midtownPhotoRig : bridgePhotoRig;
+    exportPortablePhotoHtml(activeRig);
+  });
+
+  // Bind Export 3D GLB Button (downloads active 3D scene as .glb using GLTFExporter)
+  const btnExportGlb = document.getElementById('btnExportGlb');
+  btnExportGlb.addEventListener('click', async () => {
+    const prevText = btnExportGlb.textContent;
+    btnExportGlb.textContent = 'Exporting GLB…';
+    btnExportGlb.disabled = true;
+    try {
+      const isBridge = state.scenery === 'bridge_3d' || state.scenery === 'bridge_photo';
+      const targetGroup = isBridge ? bridge3DScene.group : canyon3DGroup;
+      const filename = isBridge ? 'nyc_brooklyn_bridge_3d.glb' : 'nyc_manhattan_canyon_3d.glb';
+      await exportSceneGlb(targetGroup, filename);
+    } finally {
+      btnExportGlb.textContent = prevText;
+      btnExportGlb.disabled = false;
+    }
   });
 
   // Bind Photo+ Sub-Layer Buttons
